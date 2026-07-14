@@ -1,0 +1,166 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Visibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum Availability {
+  AVAILABLE
+  SOLD
+  NOT_FOR_SALE
+}
+
+enum MediaCategory {
+  PAINTING
+  DRAWING
+  SCULPTURE
+  PRINTMAKING
+  PHOTOGRAPHY
+  VIDEO_ART
+  INSTALLATION
+  CERAMICS
+  TEXTILE_ART
+  MIXED_MEDIA
+  COLLAGE
+  DIGITAL_ART
+  PERFORMANCE_ART
+  SOUND_ART
+  LAND_ART
+  ASSEMBLAGE
+  NEW_MEDIA
+  GLASS_ART
+  BOOK_ART
+  STREET_ART
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String?
+  role      String   @default("artist") // "artist" | "curator" | "admin"
+  createdAt DateTime @default(now())
+
+  artist    Artist?
+  refreshTokens RefreshToken[]
+}
+
+model Artist {
+  id           Int          @id @default(autoincrement())
+  user         User         @relation(fields: [userId], references: [id])
+  userId       Int          @unique
+  bio          String?
+  cv           String?
+  country      String?
+  website      String?
+  artworks     Artwork[]
+  collections  Collection[]
+  createdAt    DateTime     @default(now())
+}
+
+model Collection {
+  id         Int            @id @default(autoincrement())
+  name       String
+  statement  String?
+  startYear  Int?
+  endYear    Int?
+  category   MediaCategory?
+  artist     Artist         @relation(fields: [artistId], references: [id])
+  artistId   Int
+  visibility Visibility     @default(PUBLIC)
+  artworks   Artwork[]
+  createdAt  DateTime       @default(now())
+}
+
+model Artwork {
+  id           Int          @id @default(autoincrement())
+  artist       Artist       @relation(fields: [artistId], references: [id])
+  artistId     Int
+  collection   Collection?  @relation(fields: [collectionId], references: [id])
+  collectionId Int?
+  searchVector Unsupported("tsvector")?
+  embedding Unsupported("vector(384)")?
+
+  // Basic
+  title        String
+  year         Int?
+  medium       String?
+  dimensions   String?
+  edition      String?
+  availability Availability @default(NOT_FOR_SALE)
+  series       String?
+
+  // Curatorial
+  keywords     String[]     // tags
+  themes       String[]
+  concepts     String[]
+  techniques   String[]
+  materials    String[]
+  references   String[]
+  personalNotes   String?
+
+  exhibitionHistory ExhibitionEntry[]
+  publicationHistory PublicationEntry[]
+
+  // Media
+  media        Media[]
+
+  // Administrative
+  visibility   Visibility   @default(PUBLIC)  // artwork-level visibility
+  copyright    String?
+  price        Decimal?     @db.Decimal(10, 2)
+
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model ExhibitionEntry {
+  id         Int      @id @default(autoincrement())
+  artwork    Artwork  @relation(fields: [artworkId], references: [id])
+  artworkId  Int
+  exhibitionName String
+  venue      String?
+  location   String?
+  year       Int?
+  createdAt  DateTime @default(now())
+}
+
+model PublicationEntry {
+  id           Int      @id @default(autoincrement())
+  artwork      Artwork  @relation(fields: [artworkId], references: [id])
+  artworkId    Int
+  title        String
+  publisher    String?
+  year         Int?
+  url          String?
+  createdAt    DateTime @default(now())
+}
+
+model Media {
+  id         Int      @id @default(autoincrement())
+  artwork    Artwork  @relation(fields: [artworkId], references: [id])
+  artworkId  Int
+  type       String   // "primary" | "additional" | "installation" | "detail" | "video" | "sound"
+  url        String
+  filename   String?
+  mimeType   String?
+  size       Int?
+  createdAt  DateTime @default(now())
+}
+
+model RefreshToken {
+  id        Int       @id @default(autoincrement())
+  tokenHash String    @unique
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+}
